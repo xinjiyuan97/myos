@@ -3,34 +3,31 @@
 
 CYLS EQU 10
 
-    ORG     0x7C00
+    ORG     0x7C00          ;起始地址
+    JMP     start           ;短转移
+    DB      0x90            ;无意义
+    DB      "MY OS   "      ; BS_OEMName
+    DW      512             ; BPB_BytesPerSec
+    DB      1               ; BPB_SecPerClus
+    DW      1               ; BPB_ResvdSecCnt
+    DB      2               ; BPB_NumFATs
+    DW      224             ; BPB_RootEntCnt
+    DW      2880            ; BPB_TotSec16
+    DB      0xF0            ; BPB_Media
+    DW      9               ; BPB_FATSz16
+    DW      18              ; BPB_SecPerTrk
+    DW      2               ; BPB_NumHeads
+    DD      0               ; BPB_HiddSec
+    DD      2880            ; BPB_TotSec32
+    DB      0,0,0x29        ; BS_DrvNum
+    DD      0xffffffff      ; BS_VolID
+    DB      "HELLO-OS   "   ; BS_VolLab
+    DB      "FAT12   "      ; BS_FileSysType
+    RESB    18              ; 无意义
 
 
 
-    JMP     entry
-    DB      0x90
-    DB      "HELLOIPL"      ; 扇区名称 8字节
-    DW      512             ; 一个扇区的大小 必须是512
-    DB      1               ; 集群大小 必须是1个扇区
-    DW      1               ; FAT从哪里开始，一般取第一扇区
-    DB      2               ; FAT的个数，必须为2
-    DW      224             ; 根目录的大小，一般为224
-    DW      2880            ; 此驱动器大小(必须为2880扇区)
-    DB      0xF0            ; 介质类型(必须是0XF0)
-    DW      9               ; FAT区域的长度（必须设置为9个扇区）
-    DW      18              ; 必须是18
-    DW      2               ; 
-    DD      0               ; 
-    DD      2880            ; 再写一次这个驱动器的大小
-    DB      0,0,0x29        ; 
-    DD      0xffffffff      ; 
-    DB      "HELLO-OS   "   ; 磁盘名称(11字节)
-    DB      "FAT12   "      ; 格式名称(8字节)
-    RESB    18              ; 暂且空开18字节
-
-
-
-entry:
+start:
     MOV AX, 0
     MOV SS, AX
     MOV SP, 0x7C00
@@ -41,11 +38,11 @@ entry:
     MOV CH, 0   ; 柱面
     MOV DH, 0   ; 磁头
     MOV CL, 2   ; 扇区
-readpool:
+read:
     MOV SI, 0
 retry:
-    MOV AH, 0x02
     MOV AL, 1
+    MOV AH, 0x02
     MOV BX, 0
     MOV DL, 0x00
     INT 0x13
@@ -63,24 +60,24 @@ next:
     MOV ES, AX
     INC CL
     CMP CL, 18
-    JBE readpool
+    JBE read
     MOV CL, 1
     INC DH
     CMP DH, 2
-    JB readpool
+    JB read
     MOV DH, 0
     INC CH
     CMP CH, CYLS
-    JB readpool
+    JB read
     ;JMP error
 
     MOV [0x0FF0], CH
     JMP 0xC200
 
     
-fin:
+final:
     HLT
-    JMP fin
+    JMP final
 
 error:
     MOV SI, msg
@@ -88,7 +85,7 @@ putloop:
     MOV AL, [SI]
     INC SI
     CMP AL, 0
-    JE fin
+    JE final
     MOV AH, 0x0E
     MOV BX, 15
     INT 0x10
